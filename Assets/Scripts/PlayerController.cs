@@ -7,14 +7,15 @@ public class PlayerController : NetworkBehaviour {
 
     [Header("Movement Settings")]
     public float speed = 5.0f;
+    public float jumpForce = 20.0f;
 
     [Header("Weapon Settings")]
     public GameObject bulletPrefab;
     public Transform bulletSpawn;
-    public float waitInterval = 0.5f;
 
     private Rigidbody2D rBody;
-    private float counter = 0.0f;
+    private LayerMask floorMask;
+    private bool isRight = true;
 
     public override void OnStartLocalPlayer()
     {
@@ -24,16 +25,19 @@ public class PlayerController : NetworkBehaviour {
     // Use this for initialization
     void Start () {
         rBody = GetComponent<Rigidbody2D>();
+        floorMask = LayerMask.NameToLayer("Floor");
 	}
 
     void Update()
     {
-        if(Input.GetButton("Fire1") && counter > waitInterval)
+        if ((rBody.velocity.x > 0.0 && !isRight) || (rBody.velocity.x < 0.0 && isRight))
         {
-            CmdFire();
-        }
+            Vector2 temp = transform.localScale;
+            temp.x *= -1;
+            transform.localScale = temp;
 
-        counter += Time.deltaTime;
+            isRight = !isRight;
+        }
     }
 	
 	// Update is called once per frame
@@ -48,17 +52,36 @@ public class PlayerController : NetworkBehaviour {
         Vector2 movement = new Vector2(horiz, 0);
 
         rBody.velocity = movement * speed;
-	}
+
+        if (Input.GetButton("Fire1"))
+        {
+            CmdFire();
+        }
+        if (Input.GetButton("Jump"))
+        {
+            rBody.AddForce(new Vector2(0.0f, jumpForce));
+        }
+    }
 
     [Command]
     void CmdFire()
     {
         var bullet = (GameObject)Instantiate(bulletPrefab, bulletSpawn.position, bulletSpawn.rotation);
-        bullet.GetComponent<Rigidbody2D>().velocity = Vector2.right * 30.0f;
-        Destroy(bullet, 2.0f);
+        bullet.GetComponent<Rigidbody2D>().velocity = transform.right * 30.0f;
 
         NetworkServer.Spawn(bullet);
 
-        counter = 0.0f;
+        Destroy(bullet, 2.0f);
     }
+    /*
+    [Command]
+    private void CmdFlip()
+    {
+        Vector2 temp = transform.localScale;
+        temp.x *= -1;
+        transform.localScale = temp;
+
+        isRight = !isRight;
+    }
+    */
 }
