@@ -5,17 +5,22 @@ using UnityEngine.Networking;
 
 public class PlayerController : NetworkBehaviour {
 
+    // Public variables
     [Header("Movement Settings")]
     public float speed = 5.0f;
     public float jumpForce = 20.0f;
+    public LayerMask floorMask;
 
     [Header("Weapon Settings")]
     public GameObject bulletPrefab;
     public Transform bulletSpawn;
+    public float weaponDamage = 30.0f;
 
+    // Private variables
     private Rigidbody2D rBody;
-    private LayerMask floorMask;
     private bool isRight = true;
+    private float distToGround;
+    private bool isGrounded = false;
 
     public override void OnStartLocalPlayer()
     {
@@ -26,6 +31,7 @@ public class PlayerController : NetworkBehaviour {
     void Start () {
         rBody = GetComponent<Rigidbody2D>();
         floorMask = LayerMask.NameToLayer("Floor");
+        distToGround = GetComponent<Collider2D>().bounds.extents.y;
 	}
 
     void Update()
@@ -57,9 +63,10 @@ public class PlayerController : NetworkBehaviour {
         {
             CmdFire();
         }
-        if (Input.GetButton("Jump"))
+        if(Input.GetButton("Jump") && isGrounded)
         {
-            rBody.AddForce(new Vector2(0.0f, jumpForce));
+            rBody.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+            isGrounded = false;
         }
     }
 
@@ -67,21 +74,40 @@ public class PlayerController : NetworkBehaviour {
     void CmdFire()
     {
         var bullet = (GameObject)Instantiate(bulletPrefab, bulletSpawn.position, bulletSpawn.rotation);
-        bullet.GetComponent<Rigidbody2D>().velocity = transform.right * 30.0f;
+
+        bullet.GetComponent<Rigidbody2D>().velocity = transform.right * weaponDamage * transform.localScale.x;
 
         NetworkServer.Spawn(bullet);
 
         Destroy(bullet, 2.0f);
     }
-    /*
-    [Command]
-    private void CmdFlip()
-    {
-        Vector2 temp = transform.localScale;
-        temp.x *= -1;
-        transform.localScale = temp;
 
-        isRight = !isRight;
+    /*
+    private bool IsGrounded()
+    {
+        bool isGrounded = Physics2D.Raycast(new Vector2(transform.position.x, transform.position.y + distToGround), -Vector2.up, -0.5f, floorMask);
+        Debug.Log("Player is grounded? " + isGrounded);
+        return isGrounded;
     }
     */
+
+    void OnDrawGizmos()
+    {
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(transform.position, new Vector2(transform.position.x, transform.position.y - distToGround - 0.5f));
+    }
+
+    void OnTriggerStay2D(Collider2D collision)
+    {
+        if(collision.tag == "Floor")
+        {
+            Debug.Log("Jumping");
+            isGrounded = true;   
+        }
+        else
+        {
+            Debug.Log("Not Jumping!");
+            isGrounded = false;
+        }
+    }
 }
