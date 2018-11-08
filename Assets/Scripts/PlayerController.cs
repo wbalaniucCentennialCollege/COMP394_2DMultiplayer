@@ -56,18 +56,26 @@ public class PlayerController : NetworkBehaviour {
         float horiz = Input.GetAxis("Horizontal");
 
         Vector2 movement = new Vector2(horiz, 0);
+        movement.x *= speed;
 
-        rBody.velocity = movement * speed;
+        if(Input.GetButton("Jump") && isGrounded)
+        {
+            movement.y = jumpForce;
+            isGrounded = false;
+        }
+
+        rBody.velocity = movement;
 
         if (Input.GetButton("Fire1"))
         {
             CmdFire();
         }
+        /*
         if(Input.GetButton("Jump") && isGrounded)
         {
-            rBody.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+            rBody.AddForce(Vector2.up * jumpForce, ForceMode2D.Force);
             isGrounded = false;
-        }
+        }*/
     }
 
     [Command]
@@ -97,9 +105,9 @@ public class PlayerController : NetworkBehaviour {
         Gizmos.DrawLine(transform.position, new Vector2(transform.position.x, transform.position.y - distToGround - 0.5f));
     }
 
-    void OnTriggerStay2D(Collider2D collision)
+    void OnCollisionStay2D(Collision2D collision)
     {
-        if(collision.tag == "Floor")
+        if(collision.gameObject.tag == "Floor")
         {
             Debug.Log("Jumping");
             isGrounded = true;   
